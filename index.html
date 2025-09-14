@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <title>YouTube Video Downloader</title>
+</head>
+<body>
+
+  <h1>YouTube Downloader</h1>
+  
+  <form id="downloadForm" action="/download" method="POST">
+    <label for="url">YouTube Video URL:</label>
+    <input type="url" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required />
+
+    <label for="format">Format:</label>
+    <select id="format" name="format" required>
+      <option value="mp4">MP4</option>
+      <option value="mp3">MP3</option>
+    </select>
+
+    <label for="quality">Quality:</label>
+    <select id="quality" name="quality" required>
+      <option value="1080p">1080p</option>
+      <option value="720p">720p</option>
+      <option value="480p">480p</option>
+    </select>
+
+    <label for="path">Save to Path:</label>
+    <select id="path" name="path" required>
+      <option value="./public">./public</option>
+      <option value="./Downloads">./Downloads</option>
+      <option value="./musics">./musics</option>
+    </select>
+
+    <button type="submit">Download</button>
+  </form>
+
+</body>
+</html>
+
