@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <errno.h>
 #include <unistd.h>
@@ -7,18 +8,20 @@
 #include <filesystem>
 #include <string>
 #include <cstring>
+#include <thread>
+#include <functional>
 
 #define CHUNK 512
 
 // function to handle errors 
-void errorMessage(std::string message){
+void errorMessage(const std::string message){
         std::cout << message
         << errno << std::endl;
         exit(EXIT_FAILURE);
 }
 
 // send headers with its respective HTTP codes
-void handleHeader(int &client_fd, int index_length, int HTTPcode){
+void handleHeader(int &client_fd, const int index_length, const int HTTPcode){
 	
 	// initialize the variable and builds the header
 	std::string header;
@@ -38,15 +41,15 @@ void handleHeader(int &client_fd, int index_length, int HTTPcode){
 }
 
 // send body right after the headers
-void handleRes(int &client_fd, const char *filePath, int HTTPcode){
+void handleRes(int &client_fd, const char *filePath, const int HTTPcode){
 
 	// open the .html file 
-	int file = open(filePath, O_RDONLY);
+	const int file = open(filePath, O_RDONLY);
 	if(file < 0)
 		errorMessage("on open file: ");
 	
 	// get the lenght of the file from the path (./filename)
-	int index_length = std::filesystem::file_size(filePath);
+	const int index_length = std::filesystem::file_size(filePath);
 
 	// send the header first (only called on handle res)
 	handleHeader(client_fd, index_length, HTTPcode);
@@ -76,6 +79,21 @@ const char *returnProtocolHTTP(int &client_fd){
 			} else {
 				return NULL; 
 			}
+		}
+	}
+}
+
+void threadFunc(int client_fd){
+
+	// wait and process requests from server
+	// handleRequest(client_fd);
+	while(true){
+		if(returnProtocolHTTP(client_fd) == "GET /"){
+			handleRes(client_fd, "./index.html", 200);
+
+		} else {
+			
+			handleRes(client_fd, "./404.html", 404);
 		}
 	}
 }
@@ -116,37 +134,15 @@ int main(){
 		if(client_fd < 0)
 			errorMessage("client fd error: ");
 	
-		pid = fork();
-
-		if(pid < 0)
-			errorMessage("on pid: ");
-		
-		if(pid == 0){
-			// we are on the child.
-			close(server_fd);
-			
-
-			// wait and process requests from server
-			// handleRequest(client_fd);
-			while(true){
-				if(returnProtocolHTTP(client_fd) == "GET /"){
-					handleRes(client_fd, "./index.html", 200);
-
-				} else {
-					
-					handleRes(client_fd, "./404.html", 404);
-				}
-			}
-
-			// close child and exit process
-			close(client_fd);
-			exit(0);
-		}
-
-		if(pid > 0){
-			std::cout << "socket unused, die bitch" << std::endl;
-			close(client_fd);
-		}
+		// the thread must be able to copy the params, but were passign them by
+		// dereference (theyr memory addresses) so intead of
+		//
+		//	std::thread t(threadFunc, client_fd, server_fd).join();
+		//
+		// we do
+		// (#include <functional> for std::ref)
+		std::thread t{threadFunc, client_fd, std::ref(server_fd)};
+		t.detach();
 	}
 
 	close(server_fd);
