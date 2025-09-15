@@ -21,7 +21,7 @@ void errorMessage(const std::string message){
 }
 
 // send headers with its respective HTTP codes
-void handleHeader(int &client_fd, const int index_length, const int HTTPcode){
+void handleHeader(int &client_fd, const int index_length, const int HTTPcode, const char *fyleType){
 	
 	// initialize the variable and builds the header
 	std::string header;
@@ -31,7 +31,9 @@ void handleHeader(int &client_fd, const int index_length, const int HTTPcode){
 	else if (HTTPcode == 404)
 		header += " Not Found\r\n";
 
-	header += "Content-Type: text/html\r\n";
+	header += "Content-Type: ";
+	header += fyleType;
+	header += "\r\n";
 	header += "Content-Length: " + std::to_string(index_length) + "\r\n";
 	header += "Accept-Charset: UTF-8\r\n";
 	header += "\r\n";
@@ -41,7 +43,7 @@ void handleHeader(int &client_fd, const int index_length, const int HTTPcode){
 }
 
 // send body right after the headers
-void handleRes(int &client_fd, const char *filePath, const int HTTPcode){
+void handleRes(int &client_fd, const char *filePath, const int HTTPcode, const char *fyleType){
 
 	// open the .html file 
 	const int file = open(filePath, O_RDONLY);
@@ -52,7 +54,7 @@ void handleRes(int &client_fd, const char *filePath, const int HTTPcode){
 	const int index_length = std::filesystem::file_size(filePath);
 
 	// send the header first (only called on handle res)
-	handleHeader(client_fd, index_length, HTTPcode);
+	handleHeader(client_fd, index_length, HTTPcode, fyleType);
 
 	// send the body by chunks of 512 bytes to the client
 	char buffer[CHUNK];
@@ -64,38 +66,28 @@ void handleRes(int &client_fd, const char *filePath, const int HTTPcode){
 	close(file);
 }
 
-// return the protocol sent by the browser
-const char *returnProtocolHTTP(int &client_fd){
-	
-	// get the right protocol by reading the client socket
-	char buffer[CHUNK];
-	while(true){
-		
-		if(read(client_fd, buffer, sizeof(buffer)) > 0){
-			
-			if(strstr(buffer, "GET / HTTP") != nullptr){
-				return "GET /";
-				break;
-			} else {
-				return NULL; 
-			}
-		}
-	}
-}
-
 void threadFunc(int client_fd){
 
-	// wait and process requests from server
-	// handleRequest(client_fd);
-	while(true){
-		if(returnProtocolHTTP(client_fd) == "GET /"){
-			handleRes(client_fd, "./index.html", 200);
-
+	char buffer[CHUNK];
+	while((read(client_fd, buffer, sizeof(buffer))) > 0){
+		
+		if(strstr(buffer, "GET / ") != nullptr){
+			handleRes(client_fd, "./index.html", 200, "text/html");
 		} else {
-			
-			handleRes(client_fd, "./404.html", 404);
+			handleRes(client_fd, "./404.html", 404, "text/html");
 		}
+			
+		//std::cout << returnProtocolHTTP(client_fd) << std::endl;
+		/*
+		 * a function to handle the protocol (GET, DELETE, POST, PUT)
+		 * a function to handle the url (/, /favicon.ico)
+		 * a function to parse bot (GET /, DELETE /favicon.ico)
+		 */
+		memset(buffer,0,strlen(buffer));
 	}
+
+	close(client_fd);
+	exit(0);
 }
 
 int main(){
@@ -141,7 +133,7 @@ int main(){
 		//
 		// we do
 		// (#include <functional> for std::ref)
-		std::thread t{threadFunc, client_fd, std::ref(server_fd)};
+		std::thread t{threadFunc, client_fd};
 		t.detach();
 	}
 
