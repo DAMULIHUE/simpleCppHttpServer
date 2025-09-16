@@ -73,6 +73,8 @@ void threadFunc(int client_fd){
 		
 		if(strstr(buffer, "GET / ") != nullptr){
 			handleRes(client_fd, "./index.html", 200, "text/html");
+		} else if(strstr(buffer, "GET /favicon.ico") || strstr(buffer, "GET /images/favicon.ico")) {
+			handleRes(client_fd, "./favicon.ico", 200, "image/x-icon");
 		} else {
 			handleRes(client_fd, "./404.html", 404, "text/html");
 		}
@@ -87,7 +89,7 @@ void threadFunc(int client_fd){
 	}
 
 	close(client_fd);
-	exit(0);
+
 }
 
 int main(){
